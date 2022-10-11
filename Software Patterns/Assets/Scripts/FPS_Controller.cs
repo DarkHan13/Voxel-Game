@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.UI;
 public class FPS_Controller : MonoBehaviour
@@ -23,8 +24,7 @@ public class FPS_Controller : MonoBehaviour
     public float checkIncrement = 0.1f;
     public float reach = 8f;
 
-    public Text SelectedBlockText;
-    public byte selectedBlockIndex = 1;
+    public Toolbar toolbar;
 
     [HideInInspector]
     public bool canMove = true;
@@ -41,6 +41,47 @@ public class FPS_Controller : MonoBehaviour
     }
 
     void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.I)) _world.inUI = !_world.inUI;
+        
+        if (!_world.inUI)
+        {
+            GetPlayerInputs();
+            placeCursorBlocks();
+        }
+    }
+
+    private void placeCursorBlocks()
+    {
+        float step = checkIncrement;
+        Vector3 lastPos = new Vector3();
+
+        while (step < reach)
+        {
+            Vector3 pos = playerCamera.transform.position + (playerCamera.transform.forward * step);
+
+            if (_world.CheckForVoxel(pos))
+            {
+                highLigthBlocks.position = new Vector3(Mathf.FloorToInt(pos.x) + 0.5f, Mathf.FloorToInt(pos.y) + 0.5f,
+                    Mathf.FloorToInt(pos.z) + 0.5f);
+                placeBlocks.position = lastPos + new Vector3(0.5f, 0.5f, 0.5f);
+                
+                highLigthBlocks.gameObject.SetActive(true);
+                placeBlocks.gameObject.SetActive(true);
+                
+                return;
+            }
+            
+            lastPos = new Vector3(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y),
+                Mathf.FloorToInt(pos.z));
+
+            step += checkIncrement;
+        }
+        highLigthBlocks.gameObject.SetActive(false);
+        placeBlocks.gameObject.SetActive(false);
+    }
+
+    void GetPlayerInputs()
     {
         // We are grounded, so recalculate move direction based on axes
         Vector3 forward = transform.TransformDirection(Vector3.forward);
@@ -73,14 +114,13 @@ public class FPS_Controller : MonoBehaviour
             else if (Input.GetButton("Sprint"))
             {
                 moveDirection.y = -flySpeed;
-                Debug.Log("Work");
             }
         }
 
         // Apply gravity. Gravity is multiplied by deltaTime twice (once here, and once below
         // when the moveDirection is multiplied by deltaTime). This is because gravity should be applied
         // as an acceleration (ms^-2)
-        if (!characterController.isGrounded)
+        if (!characterController.isGrounded && !canFly)
         {
             moveDirection.y -= gravity * Time.deltaTime;
         }
@@ -88,18 +128,7 @@ public class FPS_Controller : MonoBehaviour
         // Move the controller
         characterController.Move(moveDirection * Time.deltaTime);
 
-        // scroll blocks
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (scroll != 0)
-        {
-            if (scroll > 0) selectedBlockIndex++;
-            else selectedBlockIndex--;
 
-            if (selectedBlockIndex > _world.blockTypes.Length - 1) selectedBlockIndex = 1;
-            else if (selectedBlockIndex < 1) selectedBlockIndex = (byte)(_world.blockTypes.Length - 1);
-
-            SelectedBlockText.text = _world.blockTypes[selectedBlockIndex].blockName + " block";
-        }
         
         // actions with block
         if (highLigthBlocks.gameObject.activeSelf)
@@ -113,12 +142,23 @@ public class FPS_Controller : MonoBehaviour
             // Create block
             if (Input.GetMouseButtonDown(1))
             {
-                _world.GetChunkFromVector3(placeBlocks.position).EditVoxel(placeBlocks.position, selectedBlockIndex);
+                try
+                {
+                    if (toolbar.slots[toolbar.slotIndex].hasItem)
+                    {
+                        _world.GetChunkFromVector3(placeBlocks.position).EditVoxel(placeBlocks.position,
+                            toolbar.slots[toolbar.slotIndex].itemSlot._stack.id);
+                        toolbar.slots[toolbar.slotIndex].itemSlot.Take(1);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.Log("placeBlocks: " + placeBlocks);
+                    Debug.Log("placeBlocks.position: " + placeBlocks.position);
+                    Console.WriteLine(e);
+                }
             }
         }
-        
-        placeCursorBlocks();
-
         
         // Player and Camera rotation
         if (canMove)
@@ -128,35 +168,5 @@ public class FPS_Controller : MonoBehaviour
             playerCamera.transform.localRotation = Quaternion.Euler(rotationX, 0, 0);
             transform.rotation *= Quaternion.Euler(0, Input.GetAxis("Mouse X") * lookSpeed, 0);
         }
-    }
-
-    private void placeCursorBlocks()
-    {
-        float step = checkIncrement;
-        Vector3 lastPos = new Vector3();
-
-        while (step < reach)
-        {
-            Vector3 pos = playerCamera.transform.position + (playerCamera.transform.forward * step);
-
-            if (_world.CheckForVoxel(pos))
-            {
-                highLigthBlocks.position = new Vector3(Mathf.FloorToInt(pos.x) + 0.5f, Mathf.FloorToInt(pos.y) + 0.5f,
-                    Mathf.FloorToInt(pos.z) + 0.5f);
-                placeBlocks.position = lastPos + new Vector3(0.5f, 0.5f, 0.5f);
-                
-                highLigthBlocks.gameObject.SetActive(true);
-                placeBlocks.gameObject.SetActive(true);
-                
-                return;
-            }
-            
-            lastPos = new Vector3(Mathf.FloorToInt(pos.x), Mathf.FloorToInt(pos.y),
-                Mathf.FloorToInt(pos.z));
-
-            step += checkIncrement;
-        }
-        highLigthBlocks.gameObject.SetActive(false);
-        placeBlocks.gameObject.SetActive(false);
     }
 }
