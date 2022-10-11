@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -62,9 +63,6 @@ public class World : MonoBehaviour
         if (!playerChunkCoord.Equals(playerLastChunkCoord)) 
             CheckViewDistance();
 
-        if (!applyingModifications && modifications.Any())
-            ApplyModifications();
-        
         if (chunksToCreate.Count > 0) 
             CreateChunk();
         
@@ -129,11 +127,16 @@ public class World : MonoBehaviour
     {
         while (true)
         {
-            
+            if (!applyingModifications)
+                ApplyModifications();
         }
     }
-    
-    
+
+    private void OnDisable()
+    {
+        ChunkUpdateThread.Abort();
+    }
+
     void ApplyModifications()
     {
         applyingModifications = true;
