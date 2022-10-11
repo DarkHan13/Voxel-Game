@@ -6,6 +6,9 @@ Obj/
 UnityGenerated/
 Library/
 Assets/AssetStoreTools*
+
+*# Force include scene hierachy
++!/[Ll]ibrary/LastSceneManagerSetup.txt
 # ===================================== #
 # Visual Studio / MonoDevelop generated #
 # ===================================== #
